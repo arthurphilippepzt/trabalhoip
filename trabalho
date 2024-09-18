@@ -1,0 +1,444 @@
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define SUCESSO 0
+#define TAMANHO_MAXIMO_NOME 50
+#define TAMANHO_MAX_EMAIL 100
+#define TAMANHO_MAX_SENHA 100
+
+#define TAMANHO_MAX_AVALIACAO 300
+#define TAMANHO_MAX_DESCRICAO 1000
+#define TAMANHO_MAX_PROD 3000
+
+typedef struct Produtos {
+  char nome_produto[TAMANHO_MAXIMO_NOME];
+  float preco_produto;
+  int quantidade;
+  char descricao_produto[TAMANHO_MAX_DESCRICAO];
+  char avaliacao_produto[TAMANHO_MAX_AVALIACAO];
+  int num_produto;
+
+} ProdutoUsuario;
+
+typedef struct cadastro {
+  char id[TAMANHO_MAXIMO_NOME];
+  char nome_usuario[TAMANHO_MAXIMO_NOME];
+  char email[TAMANHO_MAX_EMAIL];
+  char senha[TAMANHO_MAX_SENHA];
+  int logado;
+  ProdutoUsuario produtos[TAMANHO_MAX_PROD];
+  int qtd_produtos;
+} CadastroUsuario;
+
+// Função para remover a quebra de linha do final
+void removerQuebraLinha(char texto[]) {
+  int tamanho = strlen(texto);
+  if (tamanho > 0 && texto[tamanho - 1] == '\n') {
+    texto[tamanho - 1] = '\0';
+  }
+}
+
+// Limpar o menu
+void limparTela() {
+#ifdef _WIN32
+  system("cls");
+#else
+  system("clear");
+#endif
+}
+
+// Função para login
+int login(CadastroUsuario *usuarios, int numUsuarios) {
+  char email[TAMANHO_MAX_EMAIL];
+  char senha[TAMANHO_MAX_SENHA];
+  char id[TAMANHO_MAXIMO_NOME];
+  int i;
+
+  printf("Digite seu email (ou pressione 'ENTER' para logar pelo ID): ");
+  fgets(email, TAMANHO_MAX_EMAIL, stdin);
+  removerQuebraLinha(email);
+
+  // Verifica se o usuário escolheu logar pelo ID
+  if (strlen(email) == 0) {
+    printf("Digite o ID do usuário: ");
+    fgets(id, TAMANHO_MAXIMO_NOME, stdin);
+    removerQuebraLinha(id);
+
+    printf("Digite sua senha: ");
+    fgets(senha, TAMANHO_MAX_SENHA, stdin);
+    removerQuebraLinha(senha);
+
+    // Loop para verificar os dados de login com ID
+    for (i = 0; i < numUsuarios; i++) {
+      if (strcmp(usuarios[i].id, id) == 0 && strcmp(usuarios[i].senha, senha) == 0) {
+        printf("Login bem-sucedido! Bem-vindo, %s!\n\n", usuarios[i].nome_usuario);
+        return i; // Retorna o índice do usuário que logou
+      }
+    }
+    // Se nenhum usuário com o ID e senha corretos for encontrado
+    printf("ID ou senha incorretos. Tente novamente.\n");
+
+  } else {
+    // Se o usuário optar por logar com email
+    printf("Digite sua senha: ");
+    fgets(senha, TAMANHO_MAX_SENHA, stdin);
+    removerQuebraLinha(senha);
+
+    // Loop para verificar os dados de login com email
+    for (i = 0; i < numUsuarios; i++) {
+      if (strcmp(usuarios[i].email, email) == 0 && strcmp(usuarios[i].senha, senha) == 0) {
+        printf("Login bem-sucedido! Bem-vindo, %s!\n\n",
+               usuarios[i].nome_usuario);
+        return i; // Retorna o índice do usuário que logou
+      }
+    }
+    // Se nenhum usuário com o email e senha corretos for encontrado
+    printf("Email ou senha incorretos. Tente novamente.\n");
+  }
+
+  return -1; // Se as credenciais não forem válidas, retorna -1.
+}
+
+// Função para cadastrar um novo usuário
+void CadastrarUsuario(CadastroUsuario **usuarios, int *qtdUsuarios, FILE * arq_infousuarios) {
+    CadastroUsuario *novoUsuario;
+    CadastroUsuario *usuariosRealocados;
+    bool emailValido;
+    bool idValido;
+
+    arq_infousuarios = fopen("arq_infousuarios.txt", "a+");
+
+
+    // Tenta realocar memória para adicionar um novo usuário
+    usuariosRealocados = (CadastroUsuario *) realloc(*usuarios, (*qtdUsuarios + 1) * sizeof(CadastroUsuario));
+
+    if (usuariosRealocados == NULL) {
+        printf("Erro ao alocar memória.\n");
+        return;
+    }
+
+    // Atualiza o ponteiro original com o novo endereço de memória
+    *usuarios = usuariosRealocados;
+    novoUsuario = &(*usuarios)[*qtdUsuarios];
+
+
+    // Solicita e armazena as informações do novo usuário
+    printf("Digite o nome de usuário: ");
+    fgets(novoUsuario->nome_usuario, TAMANHO_MAXIMO_NOME, stdin);
+    removerQuebraLinha(novoUsuario->nome_usuario);
+    
+    emailValido = false;
+    
+    while (!emailValido) {
+        printf("Digite o e-mail do usuário: ");
+        fgets(novoUsuario->email, TAMANHO_MAX_EMAIL, stdin);
+        removerQuebraLinha(novoUsuario->email);
+
+        emailValido = true;
+        
+        // Conferir se o e-mail já foi utilizado
+        for (int i = 0; i < *qtdUsuarios; i++) {
+            if (strcmp(novoUsuario->email, (*usuarios)[i].email) == 0) {
+                printf("E-mail já cadastrado. Tente novamente.\n");
+                emailValido = false;
+                break;
+            }
+        }
+     if(emailValido){   
+         bool temArroba = false;
+         
+        // Conferir se o e-mail possui '@'
+        for (int i = 0; i < strlen(novoUsuario->email); i++) {
+            if (novoUsuario->email[i] == '@') {
+                temArroba = true;
+                break;
+            }
+           
+        }
+        if (!temArroba) {
+            printf("E-mail inválido. Tente novamente.\n");
+            emailValido = false;
+        }
+     }  
+    }
+
+    // Solicita e armazena a senha do novo usuário
+    printf("Digite a senha do usuário: ");
+    fgets(novoUsuario->senha, TAMANHO_MAX_SENHA, stdin);
+    removerQuebraLinha(novoUsuario->senha);
+
+    idValido = false;
+
+    while (!idValido) {
+        //Solicita e armazena o ID do usuário
+        printf("Digite o seu ID (esse ID somente você poderá ter.): ");
+        fgets(novoUsuario->id, TAMANHO_MAX_SENHA, stdin);
+        removerQuebraLinha(novoUsuario->id);
+
+        idValido = true;
+        
+        // Verifica se o ID já foi utilizado
+        for (int i = 0; i < *qtdUsuarios; i++) {
+            if (strcmp(novoUsuario->id, (*usuarios)[i].id) == 0) {
+                printf("ID já cadastrado. Tente novamente.\n");
+                idValido = false;
+                break;
+            }
+        }
+    }
+    // Define o usuário como deslogado 
+    novoUsuario->logado = 0;
+
+    // Aumenta em 1 a quantidade de usuários cadastrados
+    (*qtdUsuarios)++;
+    printf("\n");
+
+    printf("Usuário cadastrado com sucesso!\n\n");
+
+    fprintf(arq_infousuarios, "Nome: %s\nEmail: %s\nSenha: %s\nID: %s\n\n", 
+            novoUsuario->nome_usuario,
+            novoUsuario->email,
+            novoUsuario->senha,
+            novoUsuario->id);
+
+    fclose(arq_infousuarios); //Fecha o arquivo, pois não tem necessidade de deixar ele aberto para nada.
+}
+
+int MostrarMenu() {
+  int opcao;
+  limparTela();
+
+  printf("Bem Vindo ao Free Market\n");
+  printf("1 - Cadastrar Novo Usuário\n");
+  printf("2 - Fazer Login\n");
+  printf("3 - Ver produtos\n");
+  printf("4 - Buscar produtos\n");
+  printf("5 - Buscar Perfis\n\n");
+  printf("0 - Sair\n");
+  scanf("%d", &opcao);
+  getchar();
+  return opcao;
+}
+
+// Função para avaliação de produto
+//void avaliacoes() {
+  //ta errada, conversar com davi!!!!!!
+    
+  //char *st_de_avaliacao = (char *)malloc(TAMANHO_MAX_AVALIACAO * sizeof(char));
+  //char *alocacao_avaliacao;
+
+  // Pede o usuário para avaliar o produto
+  //printf("Digite aqui a sua avaliação para o produto: ");
+  //fgets(st_de_avaliacao, TAMANHO_MAX_AVALIACAO, stdin);
+  //removerQuebraLinha(st_de_avaliacao);
+
+  // Aloca memória para a avaliação
+  //alocacao_avaliacao =
+    //  (char *)realloc(st_de_avaliacao, strlen(st_de_avaliacao) + 1);
+
+  // Testa a alocação
+  //if (alocacao_avaliacao == NULL) {
+    //printf("Erro ao alocar memória.\n");
+    //free(st_de_avaliacao); // Libera memória antes de retornar
+    //return;
+  //}
+
+  // Copia a avaliação para a variável alocada
+  //strcpy(alocacao_avaliacao, st_de_avaliacao);
+
+  //printf("Obrigado por avaliar! ;) ");
+
+  // Libera a memória alocada
+  //free(alocacao_avaliacao);
+//}
+
+void ver_perfil(CadastroUsuario *usuarios) {
+  printf("Nome usuário: %s\n", usuarios->nome_usuario);
+  printf("Email usuário: %s\n", usuarios->email);
+  printf("ID usuário: %s\n", usuarios->id);
+}
+
+void criar_produto(CadastroUsuario *usuarios) {
+
+  ProdutoUsuario *novoProduto = &usuarios->produtos[usuarios->qtd_produtos];
+  // Sempre que um novo produto é criado, ele deve ser inserido na próxima
+  // posição disponível do array produtos
+
+  printf("Digite o nome do produto: ");
+  fgets(novoProduto->nome_produto, TAMANHO_MAXIMO_NOME, stdin);
+  removerQuebraLinha(novoProduto->nome_produto);
+
+  printf("Digite o preço do produto: ");
+  scanf("%f%*c", &novoProduto->preco_produto);
+
+  printf("Digite a quantidade do produto no estoque: ");
+  scanf("%d%*c", &novoProduto->quantidade);
+
+  printf("Digite a descrição do produto: ");
+  fgets(novoProduto->descricao_produto, TAMANHO_MAX_DESCRICAO, stdin);
+  removerQuebraLinha(novoProduto->descricao_produto);
+
+  novoProduto->num_produto = usuarios->qtd_produtos + 1; // Associa um número ao produto
+
+  usuarios->qtd_produtos++;
+
+  printf("Produto cadastrado com sucesso!\n\n");
+}
+
+void ver_produtos(CadastroUsuario *usuarios) {
+
+  if (usuarios->qtd_produtos == 0) {
+    printf("Não há produtos cadastrados.\n");
+  } else {
+    for (int i = 0; i < usuarios->qtd_produtos; i++) {
+
+      ProdutoUsuario *produto = &usuarios->produtos[i]; // Aponta para o produto atual
+
+      printf("Vendedor: %s (ID: %s)\n", usuarios[i].nome_usuario, usuarios[i].id);
+      printf("Nome produto: %s\n", produto->nome_produto);
+      printf("Preço produto: %.2f\n", produto->preco_produto);
+      printf("Quantidade produto: %d\n", produto->quantidade);
+      printf("Descrição produto: %s\n", produto->descricao_produto);
+      printf("Avaliação produto: %s\n", produto->avaliacao_produto);
+      printf("ID do produto: %d\n\n", produto->num_produto);
+    }
+  }
+}
+
+void Buscar_Produtos(CadastroUsuario *usuarios, int qtdUsuarios) {
+    char nome_produto_nafuncao[TAMANHO_MAXIMO_NOME];
+    int opcao, opcaoavaliacao;
+
+    do {
+        printf("Digite o nome do produto que deseja buscar: \n");
+        printf("Digite 'sair' quando quiser parar de pesquisar \n");
+        fgets(nome_produto_nafuncao, TAMANHO_MAXIMO_NOME, stdin);
+        removerQuebraLinha(nome_produto_nafuncao);
+
+        for (int i = 0; i < qtdUsuarios; i++) {
+            // Entra no usuário para checar se o produto existe
+            for (int j = 0; j < usuarios[i].qtd_produtos; j++) {
+                if (strcmp(usuarios[i].produtos[j].nome_produto, nome_produto_nafuncao) == 0) {
+                    printf("Produto encontrado!\n\n");
+                    printf("Nome: %s\n", usuarios[i].produtos[j].nome_produto);
+                    printf("Valor: %.2f\n", usuarios[i].produtos[j].preco_produto);
+                    printf("Quantidade: %d\n", usuarios[i].produtos[j].quantidade);
+                    printf("Descrição: %s\n", usuarios[i].produtos[j].descricao_produto);
+                }
+            }
+        }
+
+        printf("\n");
+        printf("O que deseja fazer?\n");
+        printf("1 - Comprar produto\n");
+        printf("2 - Favoritar produto\n");
+        scanf("%d", &opcao);
+
+        switch (opcao) {
+            case 1:
+                printf("Produto comprado com sucesso!\n");
+                printf("Deseja avaliar? \n1 - Sim\n2 - Não\n");
+                scanf("%d", &opcaoavaliacao);
+                if (opcaoavaliacao == 1) {
+                    // avaliacoes();
+                } else {
+                    printf("Obrigado por comprar com a gente! ;) \n");
+                }
+                break;
+
+            case 2:
+                printf("Produto favoritado com sucesso!\n");
+                // favoritar();
+                break;
+
+            default:
+                printf("Opção inválida. Tente novamente.\n");
+                break;
+        }
+
+    } while (strcmp(nome_produto_nafuncao, "sair") != 0);
+}
+
+
+int main(int argc, char **argv) {
+
+    FILE * arq_infousuarios = fopen("arq_infousuarios.txt", "a+");
+
+  int op;
+  CadastroUsuario *usuarios = NULL;
+  int qtdUsuarios = 0;
+  int usuarioLogado = -1;
+  int opcaoLogin;
+  int QuantidadeProdutos = 0;
+  int lixo;
+
+  do {
+    op = MostrarMenu();
+    switch (op) {
+    case 1:
+      limparTela();
+      qtdUsuarios++;
+      CadastrarUsuario(&usuarios, &qtdUsuarios, arq_infousuarios);
+
+      break;
+    case 2:
+      limparTela();
+      usuarioLogado = login(usuarios, qtdUsuarios);
+      if (usuarioLogado != -1) {
+        do {
+          printf("1 - Ver produtos\n");
+          printf("2 - Ver perfil\n");
+          printf("3 - Adicionar produto\n");
+          printf("4 - Buscar produtos\n");
+          printf("5 - Buscar Perfis\n");
+          printf("0 - Sair da sua conta\n\n");
+
+          scanf("%d", &opcaoLogin);
+          getchar();
+
+          switch (opcaoLogin) {
+          case 1:
+            // Pode ser: ver produtos, avaliações, etc.
+            ver_produtos(&usuarios[usuarioLogado]);
+
+            break;
+          case 2:
+            // Pode ser: ver perfil
+            ver_perfil(&usuarios[usuarioLogado]);
+            break;
+          case 3:
+            // Pode ser: adicionar produto
+            criar_produto(&usuarios[usuarioLogado]);
+            QuantidadeProdutos++;
+            break;
+          case 4:
+            break;
+          case 0:
+            printf("Voltando para o menu...\n");
+            break;
+          default:
+            printf("Opção inválida. Tente novamente.\n");
+            break;
+          }
+        } while (opcaoLogin != 0);
+      }
+      break;
+    case 0:
+      printf("Saindo...\n");
+      break;
+    default:
+      printf("Opção inválida. Tente novamente.\n");
+      break;
+    }
+  } while (op != 0);
+
+  // Libera memória alocada
+  free(usuarios);
+
+  // Fecha o arquivo
+  fclose(arq_infousuarios);
+  return SUCESSO;
+}
